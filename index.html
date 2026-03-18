@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCE AMPscript Dev — Playground</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>☁</text></svg>">
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div id="header">
+    <div class="logo">☁ Salesforce <span>MCE Dev</span></div>
+    <select id="sample-select">
+      <option disabled selected>— Load a sample —</option>
+    </select>
+    <span class="mode-badge" id="mode-badge">Email</span>
+    <button id="render-btn">▶ Render</button>
+  </div>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <div id="main">
+
+    <!-- Left column -->
+    <div id="left-col">
+
+      <!-- Template editor -->
+      <div class="panel-label">
+        <span>AMPscript Template</span>
+        <span style="font-weight:400;font-size:10px;">%%[ ... ]%% &nbsp;|&nbsp; %%=expr=%%</span>
+      </div>
+      <textarea id="template-editor" spellcheck="false" placeholder="Write your AMPscript template here...
+&#10;%%[
+  SET @name = 'World'
+]%%
+&#10;&lt;h1&gt;Hello, %%=v(@name)=%%!&lt;/h1&gt;"></textarea>
+
+      <!-- Tabbed data panels -->
+      <div id="data-tabs-area">
+        <div class="panel-tabs">
+          <div class="panel-tab active" data-tab="de">Data Extensions</div>
+          <div class="panel-tab" data-tab="sub">Subscriber</div>
+          <div class="panel-tab" data-tab="params">URL / Form Params</div>
+          <div class="panel-tab" data-tab="http">Mock HTTP</div>
+          <button id="data-toggle" title="Hide data panel">▼</button>
+        </div>
+
+        <!-- DE tab -->
+        <div class="tab-pane active" id="tab-de">
+          <div id="de-selector-row">
+            <label>DE:</label>
+            <select id="de-select"></select>
+            <input type="file" id="de-upload-input" accept=".csv" multiple style="display:none">
+            <button id="de-upload-btn" title="Upload CSV files as Data Extensions">⬆ Upload CSV</button>
+            <button id="de-clear-btn" title="Remove all uploaded Data Extensions">✕ Clear Uploaded</button>
+          </div>
+          <textarea id="de-rows-editor" spellcheck="false"></textarea>
+        </div>
+
+        <!-- Subscriber tab -->
+        <div class="tab-pane" id="tab-sub">
+          <div class="panel-label" style="border-top:none;">
+            <span>subscriber.json — attributes available via %%Name%% or AttributeValue()</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span id="sub-count"></span>
+              <input type="file" id="sub-upload-input" accept=".csv" style="display:none">
+              <button id="sub-upload-btn" title="Upload a CSV of subscribers (headers = field names, rows = individual subscribers)">⬆ Upload CSV</button>
+              <button id="sub-clear-btn" title="Remove uploaded subscribers and return to single subscriber">✕ Clear</button>
+            </div>
+          </div>
+          <textarea id="subscriber-editor" spellcheck="false"></textarea>
+        </div>
+
+        <!-- URL/Form Params tab -->
+        <div class="tab-pane" id="tab-params">
+          <div class="panel-label" style="border-top:none;">
+            <span>QueryParameter() / RequestParameter() — one key=value per line</span>
+          </div>
+          <textarea id="params-editor" spellcheck="false" placeholder="city=Austin&#10;ref=email_banner&#10;promoCode=SAVE20"></textarea>
+        </div>
+
+        <!-- Mock HTTP tab -->
+        <div class="tab-pane" id="tab-http">
+          <div class="panel-label" style="border-top:none;">
+            <span>HTTPGet() / HTTPPost() mocks — JSON: { "url-substring": "response" }</span>
+          </div>
+          <textarea id="http-editor" spellcheck="false" placeholder='{&#10;  "api.example.com/products": "[{\"id\":1,\"name\":\"Widget\"}]",&#10;  "api.example.com/score": "87"&#10;}'></textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Vertical splitter -->
+    <div id="v-splitter" title="Drag to resize"></div>
+
+    <!-- Preview column -->
+    <div id="preview-col">
+      <div id="preview-label">
+        <span>Live Preview</span>
+        <div id="sub-nav">
+          <button id="sub-prev-btn" disabled title="Previous subscriber">◀ Prev</button>
+          <span id="sub-nav-info"></span>
+          <button id="sub-next-btn" disabled title="Next subscriber">Next ▶</button>
+        </div>
+        <span style="font-weight:400;font-size:10px;color:#aaa;">300ms debounce</span>
+      </div>
+      <iframe id="preview-frame" title="Preview"></iframe>
+      <div id="error-bar"></div>
+      <details id="write-log-details">
+        <summary>DE Write Log <span id="write-log-count"></span></summary>
+        <pre id="write-log-body"></pre>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- ── Reference bar ───────────────────────────────────────────────────── -->
+  <div id="ref-bar">
+    <div class="ref-tabs">
+      <button class="ref-tab active" data-cat="output">Output &amp; Vars</button>
+      <button class="ref-tab" data-cat="control">Control</button>
+      <button class="ref-tab" data-cat="de-read">DE Read</button>
+      <button class="ref-tab" data-cat="de-write">DE Write</button>
+      <button class="ref-tab" data-cat="string">String</button>
+      <button class="ref-tab" data-cat="date">Date</button>
+      <button class="ref-tab" data-cat="logic">Logic &amp; Math</button>
+      <button class="ref-tab" data-cat="simulated">Simulated</button>
+      <button class="ref-tab" data-cat="personalization">Personalization</button>
+      <button class="ref-toggle" id="ref-toggle">▼ Hide</button>
+    </div>
+    <div class="ref-content" id="ref-content"></div>
+  </div>
+
+</body>
+</html>

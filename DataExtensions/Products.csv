@@ -1,0 +1,6 @@
+ProductID,Name,Price,Category,Description,ImageURL,InStock
+P001,Cloud CRM Pro,149.99,Software,Full-featured CRM for growing teams,https://placehold.co/200x150/0070d2/fff?text=CRM+Pro,true
+P002,Analytics Dashboard,89.99,Software,Real-time analytics and reporting suite,https://placehold.co/200x150/00a1e0/fff?text=Analytics,true
+P003,Email Studio Add-on,59.99,Marketing,Advanced email marketing tools,https://placehold.co/200x150/1589ee/fff?text=Email+Studio,true
+P004,Data Connector,199.99,Integration,Bi-directional data sync connector,https://placehold.co/200x150/032d60/fff?text=Connector,false
+P005,Mobile Push SDK,49.99,Mobile,Push notification SDK for iOS and Android,https://placehold.co/200x150/ff6600/fff?text=Mobile+SDK,true

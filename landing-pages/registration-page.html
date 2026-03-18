@@ -1,0 +1,104 @@
+%%[
+/* In live MCE, use: SET @subKey = QueryParameter('key') */
+SET @subKey = 'sub001'
+SET @firstName = Lookup('Subscribers', 'FirstName', 'SubscriberKey', @subKey)
+SET @lastName  = Lookup('Subscribers', 'LastName',  'SubscriberKey', @subKey)
+SET @email     = Lookup('Subscribers', 'EmailAddress', 'SubscriberKey', @subKey)
+SET @tier      = Lookup('Subscribers', 'LoyaltyTier', 'SubscriberKey', @subKey)
+SET @isVIP     = IIF(@tier == 'Gold' OR @tier == 'Platinum', 'true', 'false')
+]%%
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dreamforce 2026 — Registration</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 32px 16px; }
+    .card { background: #fff; border-radius: 10px; max-width: 540px; margin: 0 auto; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+    .logo { font-size: 20px; font-weight: bold; color: #032d60; margin-bottom: 24px; }
+    h1 { color: #032d60; font-size: 26px; margin: 0 0 4px; }
+    .subtitle { color: #555; font-size: 15px; margin: 0 0 28px; }
+    .vip-banner { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px; font-size: 14px; color: #5d4037; }
+    label { display: block; font-size: 13px; font-weight: 700; color: #333; margin-bottom: 5px; }
+    input, select { display: block; width: 100%; padding: 10px 14px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; margin-bottom: 18px; background: #fff; }
+    input:focus, select:focus { outline: 2px solid #0070d2; border-color: transparent; }
+    .row { display: flex; gap: 16px; }
+    .row > div { flex: 1; }
+    .btn { display: block; width: 100%; background: #0070d2; color: #fff; border: none; padding: 14px; border-radius: 5px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .btn:hover { background: #005fb2; }
+    .footer-note { text-align: center; color: #aaa; font-size: 12px; margin-top: 20px; }
+    .footer-note a { color: #0070d2; text-decoration: none; }
+    .badge { display: inline-block; background: #e8f4e8; color: #2e7d32; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">&#9728; Salesforce</div>
+  <h1>Dreamforce 2026</h1>
+  <p class="subtitle">
+    Completing registration for %%=v(@firstName)=%% %%=v(@lastName)=%%
+    &nbsp;<span class="badge">%%=v(@tier)=%%</span>
+  </p>
+
+  %%[ IF @isVIP == 'true' THEN ]%%
+  <div class="vip-banner">
+    &#11088; <strong>%%=v(@tier)=%% Member Perk:</strong>
+    You qualify for VIP lounge access, priority seating, and the executive keynote roundtable.
+  </div>
+  %%[ ENDIF ]%%
+
+  <form method="post" action="%%cloudpages_url%%">
+
+    <div class="row">
+      <div>
+        <label for="fn">First Name</label>
+        <input id="fn" type="text" name="FirstName" value="%%=v(@firstName)=%%">
+      </div>
+      <div>
+        <label for="ln">Last Name</label>
+        <input id="ln" type="text" name="LastName" value="%%=v(@lastName)=%%">
+      </div>
+    </div>
+
+    <label for="em">Email Address</label>
+    <input id="em" type="email" name="EmailAddress" value="%%=v(@email)=%%">
+
+    <label for="track">Session Track</label>
+    <select id="track" name="Track">
+      <option>Sales Cloud</option>
+      <option>Marketing Cloud</option>
+      <option>Service Cloud</option>
+      <option>Data + AI</option>
+      <option>Platform & Developer</option>
+    </select>
+
+    <label for="diet">Dietary Preference</label>
+    <select id="diet" name="Dietary">
+      <option>No Preference</option>
+      <option>Vegetarian</option>
+      <option>Vegan</option>
+      <option>Gluten-Free</option>
+    </select>
+
+    %%[ IF @isVIP == 'true' THEN ]%%
+    <label for="vip">VIP Session Preference</label>
+    <select id="vip" name="VIPPref">
+      <option>Executive Keynote Roundtable</option>
+      <option>Product Roadmap Briefing</option>
+      <option>1:1 with Salesforce Leadership</option>
+    </select>
+    %%[ ENDIF ]%%
+
+    <input type="hidden" name="SubscriberKey" value="%%=v(@subKey)=%%">
+    <button class="btn" type="submit">Complete Registration &#8594;</button>
+  </form>
+
+  <div class="footer-note">
+    <a href="%%profile_center_url%%">Manage Preferences</a> &nbsp;&bull;&nbsp;
+    <a href="%%unsub_center_url%%">Unsubscribe</a>
+  </div>
+</div>
+</body>
+</html>

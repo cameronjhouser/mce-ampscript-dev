@@ -1,0 +1,10 @@
+{
+  "SubscriberKey": "sub001",
+  "EmailAddress": "john.doe@example.com",
+  "FirstName": "John",
+  "LastName": "Doe",
+  "City": "Austin",
+  "Country": "US",
+  "LoyaltyTier": "Gold",
+  "attributes": {}
+}

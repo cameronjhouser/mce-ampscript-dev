@@ -1,0 +1,5 @@
+SubscriberKey,FirstName,LastName,EmailAddress,Status,City,Country,LoyaltyTier,JoinDate
+sub001,John,Doe,john.doe@example.com,Active,Austin,US,Gold,2022-03-15
+sub002,Maria,Garcia,maria.garcia@example.com,Active,Miami,US,Silver,2023-07-01
+sub003,James,Smith,james.smith@example.com,Inactive,Chicago,US,Bronze,2021-11-20
+sub004,Aiko,Tanaka,aiko.tanaka@example.com,Active,San Francisco,US,Platinum,2020-05-10

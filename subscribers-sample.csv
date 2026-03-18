@@ -1,0 +1,21 @@
+SubscriberKey,EmailAddress,FirstName,LastName,City,Country,LoyaltyTier,TotalOrders,TotalSpend,PreferredCategory,Status
+sub001,john.doe@example.com,John,Doe,Austin,US,Gold,12,1849.95,Software,Active
+sub002,jane.smith@example.com,Jane,Smith,Chicago,US,Platinum,31,5420.00,Hardware,Active
+sub003,carlos.garcia@example.com,Carlos,Garcia,Miami,US,Silver,5,320.50,Software,Active
+sub004,emily.chen@example.com,Emily,Chen,San Francisco,US,Gold,18,2750.00,Services,Active
+sub005,michael.brown@example.com,Michael,Brown,New York,US,Bronze,2,89.99,Software,Active
+sub006,sarah.johnson@example.com,Sarah,Johnson,Seattle,US,Platinum,44,8100.25,Hardware,Active
+sub007,david.wilson@example.com,David,Wilson,Denver,US,Silver,7,510.00,Services,Active
+sub008,lisa.martinez@example.com,Lisa,Martinez,Dallas,US,Gold,15,2100.75,Software,Active
+sub009,james.taylor@example.com,James,Taylor,Boston,US,Bronze,1,49.00,Hardware,Active
+sub010,amanda.anderson@example.com,Amanda,Anderson,Portland,US,Silver,9,780.00,Services,Active
+sub011,robert.thomas@example.com,Robert,Thomas,Phoenix,US,Gold,21,3300.00,Software,Active
+sub012,jessica.jackson@example.com,Jessica,Jackson,Atlanta,US,Platinum,38,6950.50,Hardware,Active
+sub013,william.white@example.com,William,White,Minneapolis,US,Bronze,3,145.00,Services,Active
+sub014,ashley.harris@example.com,Ashley,Harris,Nashville,US,Silver,6,430.00,Software,Active
+sub015,christopher.martin@example.com,Christopher,Martin,San Diego,US,Gold,14,1990.00,Hardware,Active
+sub016,stephanie.thompson@example.com,Stephanie,Thompson,Las Vegas,US,Bronze,1,29.99,Services,Active
+sub017,matthew.garcia@example.com,Matthew,Garcia,Salt Lake City,US,Silver,8,640.00,Software,Active
+sub018,lauren.robinson@example.com,Lauren,Robinson,Kansas City,US,Platinum,52,9875.00,Hardware,Active
+sub019,daniel.clark@example.com,Daniel,Clark,Orlando,US,Gold,11,1650.00,Services,Active
+sub020,megan.rodriguez@example.com,Megan,Rodriguez,Charlotte,US,Silver,4,295.00,Software,Active

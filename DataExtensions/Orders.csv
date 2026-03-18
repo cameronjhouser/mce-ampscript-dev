@@ -1,0 +1,6 @@
+OrderID,SubscriberKey,ProductID,ProductName,Quantity,UnitPrice,OrderDate,Status
+O001,sub001,P001,Cloud CRM Pro,1,149.99,2026-01-15,Shipped
+O002,sub001,P003,Email Studio Add-on,2,59.99,2026-02-01,Delivered
+O003,sub002,P002,Analytics Dashboard,1,89.99,2026-01-20,Processing
+O004,sub004,P001,Cloud CRM Pro,3,149.99,2026-02-10,Shipped
+O005,sub004,P004,Data Connector,1,199.99,2026-02-10,Shipped
