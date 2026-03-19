@@ -73,6 +73,8 @@ function rebuildDEDropdown() {
   deSelect.value = deEngine.getNames().includes(prev) ? prev : (deEngine.getNames()[0] ?? '');
   currentDEName = deSelect.value;
   if (currentDEName) loadDEIntoEditor(currentDEName);
+  // Show Clear only when uploaded DEs exist
+  deClearBtn.style.display = deEngine.getUploadedNames().length ? '' : 'none';
 }
 
 function persistUploadedDEs() {
@@ -169,6 +171,7 @@ function updateSubNav() {
     // Mirror the active subscriber into the editor so users can see its data
     subscriberEditor.value = JSON.stringify(subscriberList[currentSubIdx], null, 2);
   }
+  subClearBtn.style.display = total > 0 ? '' : 'none';
 }
 
 // Restore persisted subscriber list before first render
