@@ -301,7 +301,6 @@ html, body {
 #sub-upload-btn:hover { border-color: var(--sf-blue); color: var(--sf-blue); }
 #de-clear-btn:hover,
 #sub-clear-btn:hover  { border-color: var(--error);   color: var(--error); }
-#de-clear-btn, #sub-clear-btn { display: none; }
 #sub-count {
   font-size: 10px;
   color: var(--muted);
