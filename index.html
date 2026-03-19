@@ -11,12 +11,21 @@
 
   <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <div id="header">
-    <div class="logo">☁ Salesforce <span>MCE Dev</span></div>
+    
+
+    <a href="/" class="header-logo">
+    <img 
+      src="AcademyImage_WhiteText.png" 
+      alt="ListEngage Academy" 
+      class="logo-img"
+    >   
+  </a>
+  <div class="logo"><span>MCE AMPscript Playground</span></div>
+
+    <span class="mode-badge" id="mode-badge">Email</span>
     <select id="sample-select">
       <option disabled selected>— Load a sample —</option>
     </select>
-    <span class="mode-badge" id="mode-badge">Email</span>
-    <button id="render-btn">▶ Render</button>
   </div>
 
   <!-- ── Main ────────────────────────────────────────────────────────────── -->
@@ -25,16 +34,54 @@
     <!-- Left column -->
     <div id="left-col">
 
-      <!-- Template editor -->
-      <div class="panel-label">
-        <span>AMPscript Template</span>
-        <span style="font-weight:400;font-size:10px;">%%[ ... ]%% &nbsp;|&nbsp; %%=expr=%%</span>
-      </div>
-      <textarea id="template-editor" spellcheck="false" placeholder="Write your AMPscript template here...
+      <!-- Template + Content Block tabs -->
+      <div id="template-tabs-area">
+        <div id="template-tab-bar">
+          <button class="tmpl-tab active" data-pane="template">AMPScript Template</button>
+          <button class="tmpl-tab" data-pane="block-0" id="tmpl-tab-block-0">Block 1</button>
+          <button class="tmpl-tab" data-pane="block-1" id="tmpl-tab-block-1">Block 2</button>
+          <button class="tmpl-tab" data-pane="block-2" id="tmpl-tab-block-2">Block 3</button>
+          <span id="tmpl-tab-hint">%%[ ... ]%% &nbsp;|&nbsp; %%=expr=%%</span>
+        </div>
+        <!-- Template pane -->
+        <div class="tmpl-pane active" id="tmpl-pane-template">
+          <textarea id="template-editor" spellcheck="false" placeholder="Write your AMPscript template here...
 &#10;%%[
   SET @name = 'World'
 ]%%
 &#10;&lt;h1&gt;Hello, %%=v(@name)=%%!&lt;/h1&gt;"></textarea>
+        </div>
+        <!-- Content Block pane 0 -->
+        <div class="tmpl-pane" id="tmpl-pane-block-0">
+          <div class="cb-meta-row">
+            <label>Name <input class="cb-name" data-idx="0" value="Block 1"></label>
+            <label>Key  <input class="cb-key"  data-idx="0" value="7160b2dc-0351-4836-87b9-a7b66c312d61"></label>
+            <label>ID   <input class="cb-id"   data-idx="0" value="5593491"></label>
+          </div>
+          <textarea class="cb-editor" data-idx="0" spellcheck="false" placeholder="Write HTML + AMPscript for this content block..."></textarea>
+        </div>
+        <!-- Content Block pane 1 -->
+        <div class="tmpl-pane" id="tmpl-pane-block-1">
+          <div class="cb-meta-row">
+            <label>Name <input class="cb-name" data-idx="1" value="Block 2"></label>
+            <label>Key  <input class="cb-key"  data-idx="1" value="2160b2dc-0351-4836-87b9-a7b66c312d61"></label>
+            <label>ID   <input class="cb-id"   data-idx="1" value="3333491"></label>
+          </div>
+          <textarea class="cb-editor" data-idx="1" spellcheck="false" placeholder="Write HTML + AMPscript for this content block..."></textarea>
+        </div>
+        <!-- Content Block pane 2 -->
+        <div class="tmpl-pane" id="tmpl-pane-block-2">
+          <div class="cb-meta-row">
+            <label>Name <input class="cb-name" data-idx="2" value="Block 3"></label>
+            <label>Key  <input class="cb-key"  data-idx="2" value="9160b2dc-0351-4836-87b9-a7b66c312d61"></label>
+            <label>ID   <input class="cb-id"   data-idx="2" value="1213491"></label>
+          </div>
+          <textarea class="cb-editor" data-idx="2" spellcheck="false" placeholder="Write HTML + AMPscript for this content block..."></textarea>
+        </div>
+      </div>
+
+      <!-- Horizontal splitter -->
+      <div id="h-splitter" title="Drag to resize"></div>
 
       <!-- Tabbed data panels -->
       <div id="data-tabs-area">
@@ -53,7 +100,7 @@
             <select id="de-select"></select>
             <input type="file" id="de-upload-input" accept=".csv" multiple style="display:none">
             <button id="de-upload-btn" title="Upload CSV files as Data Extensions">⬆ Upload CSV</button>
-            <button id="de-clear-btn" title="Remove all uploaded Data Extensions">✕ Clear Uploaded</button>
+            <button id="de-clear-btn" title="Remove all uploaded Data Extensions">✕ Clear</button>
           </div>
           <textarea id="de-rows-editor" spellcheck="false"></textarea>
         </div>
@@ -127,6 +174,7 @@
       <button class="ref-tab" data-cat="logic">Logic &amp; Math</button>
       <button class="ref-tab" data-cat="simulated">Simulated</button>
       <button class="ref-tab" data-cat="personalization">Personalization</button>
+      <button class="ref-tab" data-cat="unsupported">Unsupported</button>
       <button class="ref-toggle" id="ref-toggle">▼ Hide</button>
     </div>
     <div class="ref-content" id="ref-content"></div>

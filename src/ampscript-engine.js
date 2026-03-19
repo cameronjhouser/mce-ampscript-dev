@@ -24,12 +24,13 @@ for (const [path, html] of Object.entries(contentBlockFiles)) {
 }
 
 export class AMPscriptEngine {
-  constructor(subscriberAttrs = {}, params = {}, mockHttp = {}) {
-    this.subscriber = subscriberAttrs;
-    this.params     = params;
-    this.mockHttp   = mockHttp;
-    this.vars       = {};
-    this.writeLog   = [];
+  constructor(subscriberAttrs = {}, params = {}, mockHttp = {}, contentBlocks = []) {
+    this.subscriber    = subscriberAttrs;
+    this.params        = params;
+    this.mockHttp      = mockHttp;
+    this.contentBlocks = contentBlocks;
+    this.vars          = {};
+    this.writeLog      = [];
   }
 
   render(template) {
@@ -389,6 +390,29 @@ export class AMPscriptEngine {
         return Array.isArray(p) ? p : [p];
       } catch { return []; }
     }
+    if (fn === 'BUILDROWSETFROMXML') {
+      try {
+        const doc = new DOMParser().parseFromString(String(args[0] ?? ''), 'text/xml');
+        return Array.from(doc.documentElement.children).map(n => {
+          const row = {}; Array.from(n.children).forEach(c => { row[c.tagName] = c.textContent; }); return row;
+        });
+      } catch { return []; }
+    }
+    if (fn === 'URLENCODE') return encodeURIComponent(String(args[0] ?? ''));
+    if (fn === 'URLDECODE' || fn === 'DECODEURLPARAMETER') {
+      try { return decodeURIComponent(String(args[0] ?? '')); } catch { return String(args[0] ?? ''); }
+    }
+    if (fn === 'STRINGTOHEX') {
+      return Array.from(String(args[0] ?? '')).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+    }
+    if (fn === 'HEXTOSTRING') {
+      return String(args[0] ?? '').replace(/../g, hex => String.fromCharCode(parseInt(hex, 16)));
+    }
+    if (fn === 'REPLACELIST') {
+      let s = String(args[0] ?? '');
+      for (let i = 1; i + 1 < args.length; i += 2) s = s.split(String(args[i] ?? '')).join(String(args[i + 1] ?? ''));
+      return s;
+    }
 
     // ── Logic ─────────────────────────────────────────────────────────────
     if (fn === 'EMPTY')  return args[0] == null || args[0] === '';
@@ -396,6 +420,16 @@ export class AMPscriptEngine {
     if (fn === 'IIF')    return args[0] ? args[1] : args[2];
     if (fn === 'ISEMAILADDRESS') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(args[0] ?? ''));
     if (fn === 'ISPHONENUMBER')  return /^[\d\s\-\+\(\)]{7,15}$/.test(String(args[0] ?? ''));
+    if (fn === 'ISNULLDEFAULT' || fn === 'NULLDEFAULT') {
+      return (args[0] == null || args[0] === '') ? (args[1] ?? null) : args[0];
+    }
+    if (fn === 'NOT') return !args[0];
+    if (fn === 'RAISEERROR') throw new Error(String(args[0] ?? 'RaiseError() called'));
+    if (fn === 'DOMAIN') {
+      const m = String(args[0] ?? '').match(/@([^@]+)$/);
+      return m ? m[1] : '';
+    }
+    if (fn === 'OUTPUTLINE') return args.map(a => String(a ?? '')).join('') + '<br>';
 
     // ── Date ──────────────────────────────────────────────────────────────
     if (fn === 'NOW' || fn === 'GETSYSTEMDATETIME') {
@@ -445,6 +479,25 @@ export class AMPscriptEngine {
     if (fn === 'FORMATCURRENCY') {
       return Number(args[0]).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     }
+    if (fn === 'DATEPART') {
+      const d = new Date(String(args[0] ?? '')), part = String(args[1] ?? '').toUpperCase();
+      if (part === 'YEAR'   || part === 'YY' || part === 'YYYY') return d.getFullYear();
+      if (part === 'MONTH'  || part === 'MM' || part === 'M')    return d.getMonth() + 1;
+      if (part === 'DAY'    || part === 'DD' || part === 'D')    return d.getDate();
+      if (part === 'HOUR'   || part === 'HH' || part === 'H')    return d.getHours();
+      if (part === 'MINUTE' || part === 'MI')                    return d.getMinutes();
+      if (part === 'SECOND' || part === 'SS' || part === 'S')    return d.getSeconds();
+      if (part === 'WEEKDAY'|| part === 'DW')                    return d.getDay() + 1;
+      return null;
+    }
+    if (fn === 'SYSTEMDATETOLOCALDATE') {
+      const d = new Date(String(args[0] ?? ''));
+      return isNaN(d) ? '' : d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', { hour12: false });
+    }
+    if (fn === 'LOCALDATETOSYSTEMDATE') {
+      const d = new Date(String(args[0] ?? ''));
+      return isNaN(d) ? '' : d.toISOString().slice(0, 19).replace('T', ' ');
+    }
 
     // ── Math ──────────────────────────────────────────────────────────────
     if (fn === 'ADD')      return Number(args[0]) + Number(args[1]);
@@ -463,6 +516,7 @@ export class AMPscriptEngine {
       const lo = Number(args[0] ?? 0), hi = Number(args[1] ?? 100);
       return Math.floor(Math.random() * (hi - lo + 1)) + lo;
     }
+    if (fn === 'SQRT') return Math.sqrt(Number(args[0]));
 
     // ── Utility ───────────────────────────────────────────────────────────
     if (fn === 'GUID') return crypto.randomUUID();
@@ -489,17 +543,36 @@ export class AMPscriptEngine {
 
     // ── Content Blocks ────────────────────────────────────────────────────
     if (fn === 'CONTENTBLOCKBYNAME' || fn === 'CONTENTBLOCKBYKEY') {
-      const key = String(args[0] ?? '').toLowerCase();
-      return _contentBlocks[key] ?? `<!-- ContentBlock '${args[0]}' not found in ContentBlocks/ -->`;
+      const q  = String(args[0] ?? '').toLowerCase();
+      const ui = fn === 'CONTENTBLOCKBYNAME'
+        ? this.contentBlocks.find(b => b.name.toLowerCase() === q)
+        : this.contentBlocks.find(b => b.key.toLowerCase() === q);
+      if (ui) return ui.html ? this.render(ui.html).html : '';
+      return _contentBlocks[q] ?? `<!-- ContentBlock '${args[0]}' not found -->`;
     }
     if (fn === 'CONTENTBLOCKBYID') {
       const id  = String(args[0] ?? '');
+      const ui  = this.contentBlocks.find(b => String(b.id) === id);
+      if (ui) return ui.html ? this.render(ui.html).html : '';
       const key = Object.keys(_contentBlocks).find(k => k.startsWith(id));
       return key ? _contentBlocks[key] : `<!-- ContentBlock ID ${id} not found -->`;
     }
     if (fn === 'TREATASCONTENT') {
       const { html } = this.render(String(args[0] ?? ''));
       return html;
+    }
+    if (fn === 'BARCODEURL') {
+      const val = encodeURIComponent(String(args[0] ?? '')), type = String(args[1] ?? 'qr').toLowerCase();
+      return `https://barcode.tec-it.com/barcode.ashx?DATA=${val}&TYPE=${type}&UNIT=Fit&WIDTH=200&HEIGHT=200`;
+    }
+    if (fn === 'WRAPLONGURL') return String(args[0] ?? '');
+    if (fn === 'BUILDOPTIONLIST') {
+      const rows = args[0], valField = String(args[1] ?? 'Value'), txtField = String(args[2] ?? valField), sel = args[3];
+      if (!Array.isArray(rows)) return '';
+      return rows.map(r => {
+        const v = r[valField] ?? '', t = r[txtField] ?? v;
+        return `<option value="${String(v).replace(/"/g, '&quot;')}"${String(v) === String(sel) ? ' selected' : ''}>${t}</option>`;
+      }).join('');
     }
 
     // ── HTTP mocks ────────────────────────────────────────────────────────
@@ -514,7 +587,9 @@ export class AMPscriptEngine {
     // ── DE read ───────────────────────────────────────────────────────────
     if (fn === 'LOOKUP')            return deEngine.lookup(args[0], args[1], args[2], args[3]);
     if (fn === 'LOOKUPROWS')        return deEngine.lookupRows(args[0], args[1], args[2]);
-    if (fn === 'LOOKUPORDEREDROWS') return deEngine.lookupOrderedRows(args[0], args[1], args[2], args[3], args[4]);
+    if (fn === 'LOOKUPORDEREDROWS')   return deEngine.lookupOrderedRows(args[0], args[1], args[2], args[3], args[4]);
+    if (fn === 'LOOKUPROWSCS')        return deEngine.lookupRows(args[0], args[1], args[2]);
+    if (fn === 'LOOKUPORDEREDROWSCS') return deEngine.lookupOrderedRows(args[0], args[1], args[2], args[3], args[4]);
     if (fn === 'DATAEXTENSIONROWCOUNT') return deEngine.getDE(args[0]).length;
     if (fn === 'FIELD') {
       const row = args[0], col = String(args[1] ?? '');

@@ -16,6 +16,14 @@ let currentDEName  = deEngine.getNames()[0] ?? '';
 let subscriberList = [];   // [] = single-subscriber mode (editor textarea)
 let currentSubIdx  = 0;
 
+// Content blocks (3 fixed slots, editable Name/Key/ID + HTML)
+const CB_LS_KEY = 'mce-dev-content-blocks';
+let contentBlocks = [
+  { name: 'Block 1', key: '7160b2dc-0351-4836-87b9-a7b66c312d61', id: '5593491', html: '' },
+  { name: 'Block 2', key: '2160b2dc-0351-4836-87b9-a7b66c312d61', id: '3333491', html: '' },
+  { name: 'Block 3', key: '9160b2dc-0351-4836-87b9-a7b66c312d61', id: '1213491', html: '' },
+];
+
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const templateEditor   = document.getElementById('template-editor');
 const previewFrame     = document.getElementById('preview-frame');
@@ -65,6 +73,8 @@ function rebuildDEDropdown() {
   deSelect.value = deEngine.getNames().includes(prev) ? prev : (deEngine.getNames()[0] ?? '');
   currentDEName = deSelect.value;
   if (currentDEName) loadDEIntoEditor(currentDEName);
+  // Show Clear only when uploaded DEs exist
+  deClearBtn.style.display = deEngine.getUploadedNames().length ? '' : 'none';
 }
 
 function persistUploadedDEs() {
@@ -161,6 +171,7 @@ function updateSubNav() {
     // Mirror the active subscriber into the editor so users can see its data
     subscriberEditor.value = JSON.stringify(subscriberList[currentSubIdx], null, 2);
   }
+  subClearBtn.style.display = total > 0 ? '' : 'none';
 }
 
 // Restore persisted subscriber list before first render
@@ -256,7 +267,7 @@ function render() {
   const params   = parseParams(paramsEditor.value);
   const mockHttp = parseMockHttp(httpEditor.value);
 
-  const engine = new AMPscriptEngine(sub, params, mockHttp);
+  const engine = new AMPscriptEngine(sub, params, mockHttp, contentBlocks);
   const { html, error, writeLog } = engine.render(templateEditor.value);
 
   // Error bar
@@ -309,7 +320,7 @@ deSelect.addEventListener('change', () => {
   loadDEIntoEditor(currentDEName);
 });
 
-// ── Tab switching ──────────────────────────────────────────────────────────
+// ── Tab switching (data panel) ─────────────────────────────────────────────
 document.querySelectorAll('.panel-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const target = tab.dataset.tab;
@@ -317,6 +328,89 @@ document.querySelectorAll('.panel-tab').forEach(tab => {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-' + target).classList.add('active');
+  });
+});
+
+// ── Content block state + wiring ───────────────────────────────────────────
+function persistContentBlocks() {
+  localStorage.setItem(CB_LS_KEY, JSON.stringify(contentBlocks));
+}
+
+function updateCBTabLabel(idx) {
+  const tab = document.getElementById(`tmpl-tab-block-${idx}`);
+  if (tab) tab.textContent = contentBlocks[idx].name || `Block ${idx + 1}`;
+}
+
+function restoreContentBlocks() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CB_LS_KEY) || '[]');
+    if (Array.isArray(stored) && stored.length === 3) contentBlocks = stored;
+  } catch (_) { /* use defaults */ }
+  // Populate inputs and textareas from state
+  document.querySelectorAll('.cb-name').forEach(el => {
+    const idx = Number(el.dataset.idx);
+    el.value = contentBlocks[idx].name;
+    updateCBTabLabel(idx);
+  });
+  document.querySelectorAll('.cb-key').forEach(el => {
+    el.value = contentBlocks[Number(el.dataset.idx)].key;
+  });
+  document.querySelectorAll('.cb-id').forEach(el => {
+    el.value = contentBlocks[Number(el.dataset.idx)].id;
+  });
+  document.querySelectorAll('.cb-editor').forEach(el => {
+    el.value = contentBlocks[Number(el.dataset.idx)].html;
+  });
+}
+
+restoreContentBlocks();
+
+// Template tab bar switching
+document.querySelectorAll('.tmpl-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tmpl-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tmpl-pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tmpl-pane-' + tab.dataset.pane).classList.add('active');
+  });
+});
+
+// Content block metadata inputs
+document.querySelectorAll('.cb-name').forEach(input => {
+  input.addEventListener('input', () => {
+    const idx = Number(input.dataset.idx);
+    contentBlocks[idx].name = input.value;
+    updateCBTabLabel(idx);
+    persistContentBlocks();
+  });
+});
+document.querySelectorAll('.cb-key').forEach(input => {
+  input.addEventListener('input', () => {
+    contentBlocks[Number(input.dataset.idx)].key = input.value;
+    persistContentBlocks();
+  });
+});
+document.querySelectorAll('.cb-id').forEach(input => {
+  input.addEventListener('input', () => {
+    contentBlocks[Number(input.dataset.idx)].id = input.value;
+    persistContentBlocks();
+  });
+});
+
+// Content block HTML editors
+document.querySelectorAll('.cb-editor').forEach(ta => {
+  ta.addEventListener('input', () => {
+    contentBlocks[Number(ta.dataset.idx)].html = ta.value;
+    persistContentBlocks();
+    scheduleRender();
+  });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = ta.selectionStart;
+      ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(s);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+    }
   });
 });
 
@@ -335,8 +429,10 @@ const REF = {
   'de-read': [
     { name: 'Lookup()',            syntax: "Lookup('DE','Return','Lookup',@val)",         desc: 'Return first matching field value',          snippet: "%%=Lookup('DEName','ReturnField','LookupField',@val)=%%" },
     { name: 'LookupRows()',        syntax: "LookupRows('DE','Field',@val)",               desc: 'Return all matching rows as a row set',      snippet: "%%[ SET @rows = LookupRows('DEName','Field',@val) ]%%" },
-    { name: 'LookupOrderedRows()', syntax: "LookupOrderedRows('DE',10,'F',@v,'Sort','ASC')", desc: 'Return sorted & limited row set',        snippet: "%%[ SET @rows = LookupOrderedRows('DEName',10,'Field',@val,'SortField','ASC') ]%%" },
-    { name: 'RowCount()',          syntax: "RowCount(@rows)",                             desc: 'Number of rows in a row set',               snippet: "%%=RowCount(@rows)=%%" },
+    { name: 'LookupOrderedRows()',   syntax: "LookupOrderedRows('DE',10,'F',@v,'Sort','ASC')", desc: 'Return sorted & limited row set',              snippet: "%%[ SET @rows = LookupOrderedRows('DEName',10,'Field',@val,'SortField','ASC') ]%%" },
+    { name: 'LookupRowsCS()',       syntax: "LookupRowsCS('DE','Field',@val)",               desc: 'Case-sensitive row lookup (simulated same as LookupRows)', snippet: "%%[ SET @rows = LookupRowsCS('DEName','Field',@val) ]%%" },
+    { name: 'LookupOrderedRowsCS()',syntax: "LookupOrderedRowsCS('DE',10,'F',@v,'S','ASC')", desc: 'Case-sensitive ordered row lookup',            snippet: "%%[ SET @rows = LookupOrderedRowsCS('DEName',10,'Field',@val,'SortField','ASC') ]%%" },
+    { name: 'RowCount()',           syntax: "RowCount(@rows)",                               desc: 'Number of rows in a row set',                 snippet: "%%=RowCount(@rows)=%%" },
     { name: 'Row()',               syntax: "Row(@rows, @i)",                              desc: 'Get a single row by 1-based index',         snippet: "%%[ SET @row = Row(@rows,@i) ]%%" },
     { name: 'Field()',             syntax: "Field(@row,'Column')",                        desc: 'Get a column value from a row object',      snippet: "%%=Field(@row,'ColumnName')=%%" },
   ],
@@ -359,15 +455,28 @@ const REF = {
     { name: 'RegExMatch()',              syntax: "RegExMatch(@var,'\\d+')",    desc: 'Return first regex match',                    snippet: "%%=RegExMatch(@var,'\\d+')=%%" },
     { name: 'BuildRowsetFromString()',   syntax: "BuildRowsetFromString(@v,',')", desc: 'Split delimited string into a row set',   snippet: "%%=BuildRowsetFromString(@var,',')=%%" },
     { name: 'EscapeXML()',              syntax: "EscapeXML(@var)",            desc: 'Escape HTML/XML special characters',          snippet: "%%=EscapeXML(@var)=%%" },
-    { name: 'Base64Encode()',            syntax: "Base64Encode(@var)",         desc: 'Encode string to Base64',                     snippet: "%%=Base64Encode(@var)=%%" },
-    { name: 'Base64Decode()',            syntax: "Base64Decode(@var)",         desc: 'Decode a Base64 string',                      snippet: "%%=Base64Decode(@var)=%%" },
+    { name: 'Base64Encode()',            syntax: "Base64Encode(@var)",            desc: 'Encode string to Base64',                          snippet: "%%=Base64Encode(@var)=%%" },
+    { name: 'Base64Decode()',            syntax: "Base64Decode(@var)",            desc: 'Decode a Base64 string',                           snippet: "%%=Base64Decode(@var)=%%" },
+    { name: 'URLEncode()',               syntax: "URLEncode(@url)",               desc: 'Percent-encode a string for use in a URL',         snippet: "%%=URLEncode(@url)=%%" },
+    { name: 'URLDecode()',               syntax: "URLDecode(@encoded)",           desc: 'Decode a percent-encoded URL string',              snippet: "%%=URLDecode(@encoded)=%%" },
+    { name: 'StringToHex()',             syntax: "StringToHex(@var)",             desc: 'Convert string to hexadecimal representation',    snippet: "%%=StringToHex(@var)=%%" },
+    { name: 'HexToString()',             syntax: "HexToString(@hex)",             desc: 'Convert hex string back to text',                  snippet: "%%=HexToString(@hex)=%%" },
+    { name: 'ReplaceList()',             syntax: "ReplaceList(@s,'a','1','b','2')", desc: 'Replace multiple find/replace pairs in one call', snippet: "%%=ReplaceList(@str,'old1','new1','old2','new2')=%%" },
+    { name: 'BuildRowsetFromJSON()',     syntax: "BuildRowsetFromJSON(@json)",     desc: 'Parse a JSON array string into a row set',        snippet: "%%=BuildRowsetFromJSON(@json)=%%" },
+    { name: 'BuildRowsetFromXml()',      syntax: "BuildRowsetFromXml(@xml)",       desc: 'Parse an XML string into a row set',              snippet: "%%=BuildRowsetFromXml(@xml)=%%" },
+    { name: 'FormatNumber()',            syntax: "FormatNumber(@num,2)",           desc: 'Format number to N decimal places',               snippet: "%%=FormatNumber(@num,2)=%%" },
+    { name: 'FormatCurrency()',          syntax: "FormatCurrency(@amount)",        desc: 'Format as USD currency string',                   snippet: "%%=FormatCurrency(@amount)=%%" },
   ],
   'date': [
     { name: 'Now()',       syntax: "Now()",                          desc: 'Current date and time',                       snippet: "%%=Now()=%%" },
     { name: 'Format()',    syntax: "Format(Now(),'MM/DD/YYYY')",     desc: 'Format a date value as a string',             snippet: "%%=Format(Now(),'MM/DD/YYYY')=%%" },
     { name: 'DateAdd()',   syntax: "DateAdd(Now(),'D',7)",           desc: "Add time units — D=days, M=months, Y=years, H=hours", snippet: "%%=DateAdd(Now(),'D',7)=%%" },
     { name: 'DateDiff()',  syntax: "DateDiff(@start,Now(),'D')",     desc: 'Difference between two dates in specified units', snippet: "%%=DateDiff(@startDate,Now(),'D')=%%" },
-    { name: 'DateParse()', syntax: "DateParse('2026-01-15')",        desc: 'Parse a date string into a date value',       snippet: "%%=DateParse('2026-01-15')=%%" },
+    { name: 'DateParse()',              syntax: "DateParse('2026-01-15')",            desc: 'Parse a date string into a date value',                     snippet: "%%=DateParse('2026-01-15')=%%" },
+    { name: 'DatePart()',              syntax: "DatePart(Now(),'Year')",             desc: "Extract part of a date — Year, Month, Day, Hour, Minute, Second, Weekday", snippet: "%%=DatePart(Now(),'Year')=%%" },
+    { name: 'SystemDateToLocalDate()', syntax: "SystemDateToLocalDate(Now())",       desc: 'Convert UTC system date to browser local time',             snippet: "%%=SystemDateToLocalDate(Now())=%%" },
+    { name: 'LocalDateToSystemDate()', syntax: "LocalDateToSystemDate(@localDate)",  desc: 'Convert local date/time to UTC system date',               snippet: "%%=LocalDateToSystemDate(@localDate)=%%" },
+    { name: 'GetSystemDateTime()',     syntax: "GetSystemDateTime()",                desc: 'Alias for Now() — returns current system date/time',       snippet: "%%=GetSystemDateTime()=%%" },
   ],
   'logic': [
     { name: 'IIF()',              syntax: "IIF(@a == @b,'yes','no')",  desc: 'Inline conditional — returns one of two values',  snippet: "%%=IIF(@a == @b,'yes','no')=%%" },
@@ -380,7 +489,21 @@ const REF = {
     { name: 'Subtract()',         syntax: "Subtract(@a,@b)",           desc: 'Subtract two numbers',                            snippet: "%%=Subtract(@a,@b)=%%" },
     { name: 'Multiply()',         syntax: "Multiply(@a,@b)",           desc: 'Multiply two numbers',                            snippet: "%%=Multiply(@a,@b)=%%" },
     { name: 'Divide()',           syntax: "Divide(@a,@b)",             desc: 'Divide two numbers',                              snippet: "%%=Divide(@a,@b)=%%" },
-    { name: 'GUID()',             syntax: "GUID()",                    desc: 'Generate a unique identifier (UUID v4)',           snippet: "%%=GUID()=%%" },
+    { name: 'GUID()',            syntax: "GUID()",                    desc: 'Generate a unique identifier (UUID v4)',              snippet: "%%=GUID()=%%" },
+    { name: 'IsPhoneNumber()',  syntax: "IsPhoneNumber(@phone)",     desc: 'Validate phone number format (7–15 digits)',          snippet: "%%=IsPhoneNumber(@phone)=%%" },
+    { name: 'IsNullDefault()',  syntax: "IsNullDefault(@var,'val')", desc: 'Return default if variable is null or empty',         snippet: "%%=IsNullDefault(@var,'default')=%%" },
+    { name: 'Not()',            syntax: "Not(@bool)",                desc: 'Logical NOT — reverse a boolean value',              snippet: "%%=Not(@bool)=%%" },
+    { name: 'Domain()',         syntax: "Domain(@email)",            desc: 'Extract domain portion from an email address',       snippet: "%%=Domain(@email)=%%" },
+    { name: 'OutputLine()',     syntax: "OutputLine(@var)",          desc: 'Output value followed by a line break (<br>)',       snippet: "%%[ OutputLine(@var) ]%%" },
+    { name: 'RaiseError()',     syntax: "RaiseError('msg')",         desc: 'Stop rendering and display an error message',        snippet: "%%[ RaiseError('Error message here') ]%%" },
+    { name: 'Sqrt()',           syntax: "Sqrt(@num)",                desc: 'Square root of a number',                           snippet: "%%=Sqrt(@num)=%%" },
+    { name: 'Abs()',            syntax: "Abs(@num)",                 desc: 'Absolute value',                                    snippet: "%%=Abs(@num)=%%" },
+    { name: 'Floor()',          syntax: "Floor(@num)",               desc: 'Round down to nearest integer',                     snippet: "%%=Floor(@num)=%%" },
+    { name: 'Ceiling()',        syntax: "Ceiling(@num)",             desc: 'Round up to nearest integer',                       snippet: "%%=Ceiling(@num)=%%" },
+    { name: 'Mod()',            syntax: "Mod(@a,@b)",                desc: 'Remainder after division (modulo)',                  snippet: "%%=Mod(@a,@b)=%%" },
+    { name: 'Pow()',            syntax: "Pow(@base,@exp)",           desc: 'Raise base to the power of exp',                    snippet: "%%=Pow(@base,@exp)=%%" },
+    { name: 'Max()',            syntax: "Max(@a,@b)",                desc: 'Larger of two or more values',                      snippet: "%%=Max(@a,@b)=%%" },
+    { name: 'Min()',            syntax: "Min(@a,@b)",                desc: 'Smaller of two or more values',                     snippet: "%%=Min(@a,@b)=%%" },
   ],
   'simulated': [
     { name: 'QueryParameter()',      syntax: "QueryParameter('paramName')",            desc: 'URL/form param — define in URL / Form Params tab',      snippet: "%%=QueryParameter('paramName')=%%" },
@@ -390,7 +513,14 @@ const REF = {
     { name: 'CloudPagesURL()',       syntax: "CloudPagesURL(12345,'key',@val)",        desc: 'Simulated CloudPages URL with optional params',         snippet: "%%=CloudPagesURL(12345,'key',@val)=%%" },
     { name: 'HTTPGet()',             syntax: "HTTPGet('https://api.example.com')",     desc: 'Mock HTTP call — configure in Mock HTTP tab',           snippet: "%%=HTTPGet('https://api.example.com/data')=%%" },
     { name: 'EncryptSymmetric()',    syntax: "EncryptSymmetric(@val,'aes256',...)",    desc: 'Returns [ENCRYPTED:base64] placeholder',               snippet: "%%=EncryptSymmetric(@val,'aes256','','iv','','password')=%%" },
-    { name: 'TreatAsContent()',      syntax: "TreatAsContent(@html)",                  desc: 'Re-render a string as an AMPscript template',           snippet: "%%=TreatAsContent(@html)=%%" },
+    { name: 'TreatAsContent()',      syntax: "TreatAsContent(@html)",                     desc: 'Re-render a string as an AMPscript template',           snippet: "%%=TreatAsContent(@html)=%%" },
+    { name: 'ContentBlockbyID()',   syntax: "ContentBlockbyID(5593491)",                 desc: 'HTML snippet by numeric ID — matches Block tabs above',  snippet: "%%=ContentBlockbyID(5593491)=%%" },
+    { name: 'RequestParameter()',   syntax: "RequestParameter('key')",                   desc: 'POST/GET parameter — alias for QueryParameter()',        snippet: "%%=RequestParameter('key')=%%" },
+    { name: 'HTTPPost()',           syntax: "HTTPPost('url','Content-Type','application/json',@body)", desc: 'Mock HTTP POST — configure in Mock HTTP tab', snippet: "%%=HTTPPost('https://api.example.com/data','Content-Type','application/json',@body)=%%" },
+    { name: 'DecryptSymmetric()',   syntax: "DecryptSymmetric(@enc,'aes256',...)",        desc: 'Decodes [ENCRYPTED:base64] placeholder',                snippet: "%%=DecryptSymmetric(@enc,'aes256','','iv','','password')=%%" },
+    { name: 'BarcodeUrl()',         syntax: "BarcodeUrl(@val,'qr')",                      desc: 'Generate a barcode/QR code image URL (simulated)',       snippet: "%%=BarcodeUrl(@val,'qr')=%%" },
+    { name: 'WrapLongURL()',        syntax: "WrapLongURL(@url)",                          desc: 'Returns URL unchanged (no-op — wrapping requires live MCE)', snippet: "%%=WrapLongURL(@url)=%%" },
+    { name: 'BuildOptionList()',    syntax: "BuildOptionList(@rows,'ValFld','TxtFld',@sel)", desc: 'Render <option> tags from a row set for a <select>',  snippet: "%%=BuildOptionList(@rows,'Value','Label',@selected)=%%" },
   ],
   'personalization': [
     { name: '%%FirstName%%',           syntax: '%%FirstName%%',           desc: 'Subscriber first name',               snippet: '%%FirstName%%' },
@@ -398,6 +528,32 @@ const REF = {
     { name: '%%EmailAddress%%',        syntax: '%%EmailAddress%%',        desc: 'Subscriber email address',            snippet: '%%EmailAddress%%' },
     { name: '%%profile_center_url%%',  syntax: '%%profile_center_url%%',  desc: 'Link to the preference center page', snippet: '%%profile_center_url%%' },
     { name: '%%unsub_center_url%%',    syntax: '%%unsub_center_url%%',    desc: 'Link to the unsubscribe page',        snippet: '%%unsub_center_url%%' },
+  ],
+  'unsupported': [
+    { name: 'MD5() / SHA1() / SHA256() / SHA512()', syntax: "MD5(@str)",              desc: 'Cryptographic hash functions — browser Web Crypto API is async-only, incompatible with the synchronous AMPscript engine',         unsupported: true },
+    { name: 'GetJwt() / GetJwtByKeyName()',          syntax: "GetJwt('keyName')",      desc: 'Generate a signed JWT — requires platform key store and signing infrastructure',                                                    unsupported: true },
+    { name: 'RedirectTo()',                          syntax: "RedirectTo(@url)",       desc: 'Creates a tracked MCE redirect link — requires live link tracking service (MID-specific)',                                         unsupported: true },
+    { name: 'RequestHeader()',                       syntax: "RequestHeader('header')",desc: 'Reads a live HTTP request header — requires real server context, not available in browser',                                       unsupported: true },
+    { name: 'GetSendTime()',                         syntax: "GetSendTime()",          desc: 'Returns the scheduled send time — populated only during a live email send job',                                                    unsupported: true },
+    { name: 'ContentArea() / ContentAreaByName()',   syntax: "ContentArea(12345)",     desc: 'References a CloudPages content area by ID — requires live MCE org',                                                              unsupported: true },
+    { name: 'TreatAsContentArea()',                  syntax: "TreatAsContentArea(@html)", desc: 'Renders HTML as a CloudPages content area — CloudPages runtime only',                                                          unsupported: true },
+    { name: 'ClaimRow() / ClaimRowValue()',          syntax: "ClaimRow('DE','Field')", desc: 'Atomically claim a unique row in a DE — requires live platform for concurrency guarantees',                                       unsupported: true },
+    { name: 'ExecuteFilter() / ExecuteFilterOrderedRows()', syntax: "ExecuteFilter('filterName')", desc: 'Run a saved DE filter — filters must exist in the live MCE org',                                                       unsupported: true },
+    { name: 'IsMobileSubscriber()',                  syntax: "IsMobileSubscriber()",   desc: 'Check if the recipient is a MobileConnect subscriber — requires live subscriber context',                                         unsupported: true },
+    { name: 'IsChtmlBrowser()',                      syntax: "IsChtmlBrowser()",       desc: 'Detect a CHTML mobile browser — requires live HTTP request context',                                                              unsupported: true },
+    { name: 'GetPortfolioItem()',                    syntax: "GetPortfolioItem('name')", desc: 'Retrieve a file from MCE media portfolio — requires live org',                                                                  unsupported: true },
+    { name: 'Image() / ImageById() / ImageByKey()',  syntax: "Image('name')",          desc: 'Embed an image from MCE portfolio — requires live portfolio and content builder',                                                 unsupported: true },
+    { name: 'AttachFile()',                          syntax: "AttachFile(@url)",        desc: 'Attach a file to an email send — requires live MCE email sending infrastructure',                                                unsupported: true },
+    { name: 'SendEmailMessage() / SendSMSMessage()', syntax: "SendEmailMessage(@sub,@def)", desc: 'Trigger a transactional send — requires live MCE send infrastructure and definitions',                                      unsupported: true },
+    { name: 'BeginImpressionRegion() / EndImpressionRegion()', syntax: "BeginImpressionRegion('name')", desc: 'Analytics impression regions — requires live MCE tracking service',                                             unsupported: true },
+    { name: 'MicrositeURL() / LiveContentMicrositeURL() / MobileCloudPagesURL()', syntax: "MicrositeURL('name')", desc: 'Generate microsite/CloudPages URL variants — require live MCE org and published pages',               unsupported: true },
+    { name: 'AuthenticatedEmployeeId() and related', syntax: "AuthenticatedEmployeeId()", desc: 'Return SSO / authenticated user details — require a live CloudPages login session',                                          unsupported: true },
+    { name: 'InvokeCreate() / InvokeRetrieve() / InvokeUpdate() / InvokeDelete()', syntax: "InvokeRetrieve(...)", desc: 'SOAP API calls — require live SFMC REST/SOAP credentials and cannot run in a browser context',       unsupported: true },
+    { name: 'CreateSalesforceObject() and related',  syntax: "CreateSalesforceObject('Lead',1,'field',@v)", desc: 'Salesforce CRM integration functions — require live Salesforce org connection',                             unsupported: true },
+    { name: 'RetrieveMscrmRecords() and related',    syntax: "RetrieveMscrmRecords(...)", desc: 'Microsoft Dynamics CRM functions — require live MSCRM API connection',                                                       unsupported: true },
+    { name: 'CreateSmsConversation() and related',   syntax: "CreateSmsConversation(...)", desc: 'MobileConnect SMS functions — require live MobileConnect keyword and short code',                                           unsupported: true },
+    { name: 'GetPublishedSocialContent() and related', syntax: "GetSocialPublishUrl(...)", desc: 'Social media functions — require live Social Studio connection',                                                             unsupported: true },
+    { name: 'Script { } (SSJS)',                     syntax: "%%[ Script { var x = 1; } ]%%", desc: 'Server-Side JavaScript block — requires a server-side JavaScript runtime; cannot execute in a browser',               unsupported: true },
   ],
 };
 
@@ -407,15 +563,31 @@ const refBar      = document.getElementById('ref-bar');
 const refToggle   = document.getElementById('ref-toggle');
 let activeCat     = 'output';
 
+// Resolve target editor from whichever template tab is currently active
+function getActiveEditorTextarea() {
+  const activeTab = document.querySelector('.tmpl-tab.active');
+  const pane = activeTab?.dataset.pane ?? 'template';
+  if (pane === 'template') return templateEditor;
+  const m = pane.match(/^block-(\d+)$/);
+  return m ? (document.querySelector(`.cb-editor[data-idx="${m[1]}"]`) ?? templateEditor) : templateEditor;
+}
+
 function renderRefContent(cat) {
   const entries = REF[cat] ?? [];
-  refContent.innerHTML = entries.map(e =>
-    `<div class="ref-entry">
+  refContent.innerHTML = entries.map(e => {
+    if (e.unsupported) {
+      return `<div class="ref-entry ref-unsupported">
+        <span class="ref-name ref-name-disabled">⚠ ${e.name}</span>
+        <span class="ref-syntax">${e.syntax}</span>
+        <span class="ref-desc">${e.desc}</span>
+      </div>`;
+    }
+    return `<div class="ref-entry">
       <span class="ref-name" data-snippet="${e.snippet.replace(/"/g, '&quot;')}">${e.name}</span>
       <span class="ref-syntax">${e.syntax}</span>
       <span class="ref-desc">${e.desc}</span>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 // Tab switching
@@ -428,24 +600,26 @@ document.querySelectorAll('.ref-tab').forEach(tab => {
   });
 });
 
-// Toggle collapse
+// Toggle collapse — also resize #main so the editors fill the freed space
+const mainEl = document.getElementById('main');
 refToggle.addEventListener('click', () => {
   const collapsed = refBar.classList.toggle('collapsed');
   refToggle.textContent = collapsed ? '▲ Show' : '▼ Hide';
+  mainEl.style.bottom = collapsed ? '30px' : '';
 });
 
-// Snippet insertion via event delegation
+// Snippet insertion via event delegation — target is whichever template tab is active
 refContent.addEventListener('click', e => {
   const name = e.target.closest('.ref-name');
   if (!name) return;
   const snippet = name.dataset.snippet;
   if (!snippet) return;
-  const start = templateEditor.selectionStart;
-  const end   = templateEditor.selectionEnd;
-  const val   = templateEditor.value;
-  templateEditor.value = val.slice(0, start) + snippet + val.slice(end);
-  templateEditor.selectionStart = templateEditor.selectionEnd = start + snippet.length;
-  templateEditor.focus();
+  const ed    = getActiveEditorTextarea();
+  const start = ed.selectionStart;
+  const end   = ed.selectionEnd;
+  ed.value = ed.value.slice(0, start) + snippet + ed.value.slice(end);
+  ed.selectionStart = ed.selectionEnd = start + snippet.length;
+  ed.focus();
   scheduleRender();
 });
 
@@ -469,11 +643,12 @@ subscriberEditor.addEventListener('input', scheduleRender);
 paramsEditor.addEventListener('input', scheduleRender);
 httpEditor.addEventListener('input', scheduleRender);
 sampleSelect.addEventListener('change', e => loadSample(Number(e.target.value)));
-document.getElementById('render-btn').addEventListener('click', render);
 
 // ── Vertical splitter (resize left col / preview) ──────────────────────────
 const vSplitter = document.getElementById('v-splitter');
 const leftCol   = document.getElementById('left-col');
+// Default left column to ~48% of viewport so the preview starts near the center
+leftCol.style.width = Math.max(320, Math.round(window.innerWidth * 0.48)) + 'px';
 
 vSplitter.addEventListener('mousedown', e => {
   e.preventDefault();
@@ -500,8 +675,34 @@ vSplitter.addEventListener('mousedown', e => {
   document.addEventListener('mouseup', onUp);
 });
 
-// ── Data panel collapse toggle ─────────────────────────────────────────────
+// ── Horizontal splitter (template ↕ data panel) ───────────────────────────
+const hSplitter  = document.getElementById('h-splitter');
 const dataTabsArea = document.getElementById('data-tabs-area');
+
+hSplitter.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const startY = e.clientY;
+  const startH = dataTabsArea.getBoundingClientRect().height;
+  hSplitter.classList.add('dragging');
+  document.body.style.userSelect = 'none';
+
+  function onMove(ev) {
+    const leftColH = leftCol.getBoundingClientRect().height;
+    // Dragging up → data panel grows; dragging down → data panel shrinks
+    const newH = Math.max(80, Math.min(leftColH - 80, startH - (ev.clientY - startY)));
+    dataTabsArea.style.height = newH + 'px';
+  }
+  function onUp() {
+    hSplitter.classList.remove('dragging');
+    document.body.style.userSelect = '';
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// ── Data panel collapse toggle ─────────────────────────────────────────────
 const dataToggle   = document.getElementById('data-toggle');
 
 dataToggle.addEventListener('click', () => {

@@ -46,6 +46,23 @@ html, body {
 }
 #header .logo span { opacity: .7; font-weight: 400; }
 
+/* ── Header Logo ── */
+.header-logo {
+  display: block;
+  line-height: 0;
+  flex-shrink: 0;
+  background-color: var(--surface2);         
+  padding: 1px 8px;                
+  border-radius: 8px;  
+}
+.logo-img {
+  height: 30px;
+  width: auto;
+  max-height: 52px;
+  display: block;
+  object-fit: contain;
+}
+
 #sample-select {
   background: rgba(255,255,255,.12);
   border: 1px solid rgba(255,255,255,.2);
@@ -70,19 +87,7 @@ html, body {
   letter-spacing: .5px;
 }
 
-#render-btn {
-  margin-left: auto;
-  background: var(--sf-blue);
-  color: #fff;
-  border: none;
-  padding: 7px 18px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background .15s;
-}
-#render-btn:hover { background: #005fb2; }
+#sample-select { margin-left: auto; }
 
 /* ── Main layout ─────────────────────────────────── */
 #main {
@@ -141,13 +146,100 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ── Template + Content Block tabs ──────────────────── */
+#template-tabs-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+#template-tab-bar {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: #f4f6f9;
+  overflow-x: auto;
+  padding: 0 4px;
+  gap: 0;
+}
+.tmpl-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 12px;
+  height: 30px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tmpl-tab:hover { color: var(--text); }
+.tmpl-tab.active { color: var(--sf-blue); border-bottom-color: var(--sf-blue); }
+#tmpl-tab-hint {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  padding-right: 8px;
+  white-space: nowrap;
+}
+.tmpl-pane { display: none; flex: 1; flex-direction: column; min-height: 0; }
+.tmpl-pane.active { display: flex; }
+
+/* ── Content block meta row ──────────────────────── */
+.cb-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  background: #f4f6f9;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.cb-meta-row label { display: flex; align-items: center; gap: 5px; }
+.cb-meta-row input {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  width: 120px;
+  color: var(--text);
+  text-transform: none;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.cb-meta-row input:focus { outline: 1px solid var(--sf-blue); border-color: var(--sf-blue); }
+
 /* ── Template editor ─────────────────────────────── */
 #template-editor {
   flex: 1;
+  min-height: 0;
   resize: none;
   border: none;
   outline: none;
   padding: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--surface);
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+/* ── Content block editor ───────────────────────── */
+.cb-editor {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 10px 12px;
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.6;
@@ -164,7 +256,7 @@ html, body {
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border);
-  height: 260px;
+  height: 30%;
 }
 .tab-pane {
   display: none;
@@ -209,6 +301,7 @@ html, body {
 #sub-upload-btn:hover { border-color: var(--sf-blue); color: var(--sf-blue); }
 #de-clear-btn:hover,
 #sub-clear-btn:hover  { border-color: var(--error);   color: var(--error); }
+#de-clear-btn, #sub-clear-btn { display: none; }
 #sub-count {
   font-size: 10px;
   color: var(--muted);
@@ -254,6 +347,30 @@ html, body {
 #v-splitter.dragging { background: var(--sf-blue); }
 #v-splitter:hover::after,
 #v-splitter.dragging::after { color: #fff; opacity: 1; }
+
+/* ── Horizontal splitter (template ↕ data panel) ─── */
+#h-splitter {
+  height: 6px;
+  flex-shrink: 0;
+  background: var(--border);
+  cursor: row-resize;
+  transition: background .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#h-splitter::after {
+  content: '···';
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  opacity: .6;
+  pointer-events: none;
+}
+#h-splitter:hover,
+#h-splitter.dragging { background: var(--sf-blue); }
+#h-splitter:hover::after,
+#h-splitter.dragging::after { color: #fff; opacity: 1; }
 
 /* ── Data panel toggle ───────────────────────────── */
 #data-toggle {
@@ -476,3 +593,6 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ref-unsupported { opacity: 0.6; }
+.ref-name-disabled { color: #f4a261 !important; cursor: default !important; }
+.ref-name-disabled:hover { text-decoration: none !important; color: #f4a261 !important; }
